@@ -1,0 +1,3 @@
+#!/system/bin/sh
+#dimleds by YcraD 
+echo 2 > /sys/class/leds/button-backlight/currents

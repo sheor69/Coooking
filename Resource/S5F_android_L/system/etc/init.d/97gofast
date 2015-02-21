@@ -1,0 +1,69 @@
+#!/system/bin/sh
+#ultimateRAMscript by scottypeterson 
+
+if [ -e /sys/devices/virtual/bdi/179:0/read_ahead_kb ]; then
+    echo "1024" > /sys/devices/virtual/bdi/179:0/read_ahead_kb
+fi
+
+if [ -e /sys/module/lowmemorykiller/parameters/minfree ]; then
+	echo "1536,3072,19200,23040,24320,32000" > /sys/module/lowmemorykiller/parameters/minfree
+	
+if [ -e /sys/module/lowmemorykiller/parameters/adj ]; then
+	echo "6,12,75,90,95,125" > /sys/module/lowmemorykiller/parameters/adj
+fi
+
+if [ -e /proc/sys/vm/swappiness ]; then
+	echo "0" > /proc/sys/vm/swappiness
+fi
+
+if [ -e /proc/sys/vm/vfs_cache_pressure ]; then
+	echo "5" > /proc/sys/vm/vfs_cache_pressure
+fi
+
+if [ -e /proc/sys/vm/dirty_expire_centisecs ]; then
+	echo "0" > /proc/sys/vm/dirty_expire_centisecs
+fi
+
+if [ -e /proc/sys/vm/dirty_writeback_centisecs ]; then
+	echo "0" > /proc/sys/vm/dirty_writeback_centisecs
+fi
+
+if [ -e /proc/sys/vm/dirty_ratio ]; then
+	echo "10" > /proc/sys/vm/dirty_ratio
+fi
+
+if [ -e /proc/sys/vm/dirty_background_ratio ]; then
+	echo "4" > /proc/sys/vm/dirty_background_ratio
+fi 
+
+#!/system/bin/sh
+#Thanks to zeppelinrox for the kickasskernelizer. The min_free_kbytes below were edited by scottypeterson. 
+#set -x;
+#exec > /data/98KickAssKernel.log 2>&1;
+#
+echo "";
+if [ ! "`id | grep =0`" ]; then
+	echo " You are NOT running this script as root...";
+	echo "";
+	echo "                      ...No SuperUser for you!!";
+	echo "";
+	echo "     ...Please Run as Root and try again...";
+	echo "";
+	exit 69;
+fi;
+busybox mount -o remount,rw /system 2>/dev/null;
+for m in /dev/block/mtdblock*;
+do
+busybox mount -o remount,rw $m /system 2>/dev/null;
+done;
+busybox sysctl -p;
+#
+# Disable normalized sleeper
+#
+busybox mount -t debugfs none /sys/kernel/debug 2>/dev/null;
+echo NO_NORMALIZED_SLEEPER > /sys/kernel/debug/sched_features 2>/dev/null;
+busybox umount /sys/kernel/debug;
+
+
+# ported and modified by mwakious
+# credits to the creator

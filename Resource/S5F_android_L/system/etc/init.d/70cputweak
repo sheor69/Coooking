@@ -1,0 +1,203 @@
+#!/system/bin/sh
+#
+# Created by Calkulin modified by mwakious
+# EVO3D mwakious3Drom
+
+BATTERY_PROFILES_ON="1"
+
+BATTERY_PROFILE_1="85"
+BATTERY_PROFILE_1_GOVERNOR_ON="1"
+BATTERY_PROFILE_1_GOVERNOR="ondemand"
+BATTERY_PROFILE_1_MAX_CPU_SPEED="1188000"
+BATTERY_PROFILE_1_GPU_SPEED="10 275"
+
+BATTERY_PROFILE_2="35"
+BATTERY_PROFILE_2_GOVERNOR_ON="1"
+BATTERY_PROFILE_2_GOVERNOR="ondemand"
+BATTERY_PROFILE_2_MAX_CPU_SPEED="1188000"
+BATTERY_PROFILE_2_GPU_SPEED="10 200"
+
+MAX_CPU_SPEED="1188000"
+MIN_CPU_SPEED="192000"
+GPU_SPEED="10 275"
+
+CONSERVATIVE_SAMPLING_RATE="35000"
+CONSERVATIVE_UP_THRESHOLD="75"
+CONSERVATIVE_DOWN_THRESHOLD="35"
+CONSERVATIVE_FREQ_STEP="15"
+
+LAZY_SAMPLING_RATE="50000"
+LAZY_UP_THRESHOLD="75"
+
+ONDEMAND_SAMPLING_RATE="50000"
+ONDEMAND_UP_THRESHOLD="75"
+
+AWAKE_GOVERNOR_ON="1"
+AWAKE_GOVERNOR="ondemand"
+
+AWAKE_CPU_SPEED_ON="1"
+AWAKE_MAX_CPU_SPEED="1188000"
+AWAKE_MIN_CPU_SPEED="192000"
+AWAKE_GPU_SPEED="10 275"
+
+AWAKE_DURATION="5"
+
+SLEEP_GOVERNOR_ON="1"
+SLEEP_GOVERNOR="ondemand"
+
+SLEEP_CPU_SPEED_ON="1"
+SLEEP_MAX_CPU_SPEED="384000"
+SLEEP_MIN_CPU_SPEED="192000"
+SLEEP_GPU_SPEED="10 100"
+
+BOOT_GOVERNOR=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`
+GPU_CONTROL="/sys/devices/virtual/misc/gpu_clock_control/gpu_control"
+
+if [ -e /sys/devices/system/cpu/cpufreq/busfreq_level_lock ]; then
+	echo "0" > /sys/devices/system/cpu/cpufreq/busfreq_level_lock
+fi
+
+(while [ 1 ]
+do
+    AWAKE=`cat /sys/power/wait_for_fb_wake`
+    if [ $AWAKE = "awake" ]; then
+        	chmod 0644 /sys/devices/system/cpu/cpu1/online
+        	echo "1" > /sys/devices/system/cpu/cpu0/online
+        	echo "1" > /sys/devices/system/cpu/cpu1/online
+		if [ -e $ANDROID_OC ]; then
+			echo "Android Overclock is installed, IGNORING Screen State Scaling script"
+		elif [ -e $OC_WIDGET ]; then
+			echo "Overclock Widget is installed, IGNORING Screen State Scaling script"
+		elif [ -e $QUICKCLOCK ]; then
+			echo "QuickClock Advanced Overclock is installed, IGNORING Screen State Scaling script"
+		elif [ -e $SETCPU ]; then
+			echo "SetCPU is installed, IGNORING Screen State Scaling script"
+		else
+			if [ $AWAKE_GOVERNOR_ON = "1" ]; then
+				echo $AWAKE_GOVERNOR > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+				GOVERNOR=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`
+				if [ $GOVERNOR = $AWAKE_GOVERNOR ]; then
+					echo "$AWAKE_GOVERNOR governor ENABLED"
+				else
+					echo "$AWAKE_GOVERNOR governor could NOT be ENABLED"
+				fi
+			fi
+			if [ $AWAKE_CPU_SPEED_ON = "1" ]; then
+			    echo $AWAKE_MAX_CPU_SPEED > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+			    echo $AWAKE_MIN_CPU_SPEED > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+			    echo "Set MAX/MIN CPU speed to $AWAKE_MAX_CPU_SPEED/$AWAKE_MIN_CPU_SPEED"
+				if [ -e $GPU_CONTROL ]; then
+					echo $AWAKE_GPU_SPEED > /sys/devices/virtual/misc/gpu_clock_control/gpu_control
+					echo "Set GPU speed to $AWAKE_GPU_SPEED"
+				fi
+			fi
+			sleep $AWAKE_DURATION
+			if [ $BOOT_GOVERNOR = "ondemand" ]; then
+				echo "ondemand" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+				echo $ONDEMAND_SAMPLING_RATE > /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate
+				echo $ONDEMAND_UP_THRESHOLD > /sys/devices/system/cpu/cpufreq/ondemand/up_threshold
+				echo "OnDemand governor ENABLED"
+			else
+				echo $BOOT_GOVERNOR > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+				echo "$BOOT_GOVERNOR governor ENABLED"
+			fi
+			echo $MIN_CPU_SPEED > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+			if [ $BATTERY_PROFILES_ON = "1" ]; then
+				BATTERY_LEVEL=`cat /sys/class/power_supply/battery/capacity`
+				if [ $BATTERY_LEVEL -le $BATTERY_PROFILE_2 ]; then
+					echo "Battery Profile 2 ENABLED"
+					if [ $BATTERY_PROFILE_2_GOVERNOR_ON = "1" ]; then
+						echo $BATTERY_PROFILE_2_GOVERNOR > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+						GOVERNOR=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`
+						if [ $GOVERNOR = $BATTERY_PROFILE_2_GOVERNOR ]; then
+							echo "$BATTERY_PROFILE_2_GOVERNOR governor ENABLED"
+						else
+							echo "$BATTERY_PROFILE_2_GOVERNOR governor could NOT be ENABLED"
+						fi
+					fi
+					if [ -e $GPU_CONTROL ]; then
+						echo $BATTERY_PROFILE_2_GPU_SPEED > /sys/devices/virtual/misc/gpu_clock_control/gpu_control
+						echo "Set GPU speed to $BATTERY_PROFILE_2_GPU_SPEED"
+					fi
+					echo $BATTERY_PROFILE_2_MAX_CPU_SPEED > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+					echo "Set MAX CPU speed to $BATTERY_PROFILE_2_MAX_CPU_SPEED"
+				elif [ $BATTERY_LEVEL -ge $BATTERY_PROFILE_1 ]; then
+					echo "Battery Profile 1 ENABLED"
+					if [ $BATTERY_PROFILE_1_GOVERNOR_ON = "1" ]; then
+						echo $BATTERY_PROFILE_1_GOVERNOR > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+						GOVERNOR=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`
+						if [ $GOVERNOR = $BATTERY_PROFILE_1_GOVERNOR ]; then
+							echo "$BATTERY_PROFILE_1_GOVERNOR governor ENABLED"
+						else
+							echo "$BATTERY_PROFILE_1_GOVERNOR governor could NOT be ENABLED"
+						fi
+					fi
+					if [ -e $GPU_CONTROL ]; then
+						echo $BATTERY_PROFILE_1_GPU_SPEED > /sys/devices/virtual/misc/gpu_clock_control/gpu_control
+						echo "Set GPU speed to $BATTERY_PROFILE_1_GPU_SPEED"
+					fi
+					echo $BATTERY_PROFILE_1_MAX_CPU_SPEED > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+					echo "Set MAX CPU speed to $BATTERY_PROFILE_1_MAX_CPU_SPEED"
+				else
+					if [ -e $GPU_CONTROL ]; then
+						echo $GPU_SPEED > /sys/devices/virtual/misc/gpu_clock_control/gpu_control
+						echo "Set GPU speed to $GPU_SPEED"
+					fi
+					echo $MAX_CPU_SPEED > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+					echo "Set MAX CPU speed to $MAX_CPU_SPEED"
+				fi
+			else
+				if [ -e $GPU_CONTROL ]; then
+					echo $GPU_SPEED > /sys/devices/virtual/misc/gpu_clock_control/gpu_control
+					echo "Set GPU speed to $GPU_SPEED"
+				fi
+				echo $MAX_CPU_SPEED > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+				echo "Set MAX CPU speed to $MAX_CPU_SPEED"
+			fi
+			echo "Set MIN CPU speed to $MIN_CPU_SPEED"
+		fi
+		AWAKE=
+    fi
+
+    SLEEPING=`cat /sys/power/wait_for_fb_sleep`
+    if [ $SLEEPING = "sleeping" ]; then
+		if [ -e $ANDROID_OC ]; then
+			echo "Android Overclock is installed, IGNORING Screen State Scaling script"
+		elif [ -e $OC_WIDGET ]; then
+			echo "Overclock Widget is installed, IGNORING Screen State Scaling script"
+		elif [ -e $QUICKCLOCK ]; then
+			echo "QuickClock Advanced Overclock is installed, IGNORING Screen State Scaling script"
+		elif [ -e $SETCPU ]; then
+			echo "SetCPU is installed, IGNORING Screen State Scaling script"
+		else
+			if [ $SLEEP_GOVERNOR_ON = "1" ]; then
+			    if [ $BOOT_GOVERNOR = $SLEEP_GOVERNOR ]; then
+			        echo "$SLEEP_GOVERNOR governor already ENABLED"
+				else
+				    sleep 1
+				    echo $SLEEP_GOVERNOR > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+				    GOVERNOR=`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor`
+				    if [ $GOVERNOR = $SLEEP_GOVERNOR ]; then
+					    echo "$SLEEP_GOVERNOR governor ENABLED"
+				    else
+					    echo "$SLEEP_GOVERNOR governor could NOT be ENABLED"
+				    fi
+				fi
+			fi
+			if [ $SLEEP_CPU_SPEED_ON = "1" ]; then
+			    echo $SLEEP_MAX_CPU_SPEED > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+			    echo $SLEEP_MIN_CPU_SPEED > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+			    echo "Set MAX/MIN CPU speed to $SLEEP_MAX_CPU_SPEED/$SLEEP_MIN_CPU_SPEED"
+				if [ -e $GPU_CONTROL ]; then
+					echo $SLEEP_GPU_SPEED > /sys/devices/virtual/misc/gpu_clock_control/gpu_control
+					echo "Set GPU speed to $SLEEP_GPU_SPEED"
+				fi
+			fi
+		fi
+              	chmod 0644 /sys/devices/system/cpu/cpu1/online
+              	echo "0" > /sys/devices/system/cpu/cpu1/online
+                chmod 0444 /sys/devices/system/cpu/cpu1/online
+              	echo "0" > /sys/devices/system/cpu/cpu0/online
+		SLEEPING=
+    fi
+done &)
